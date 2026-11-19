@@ -1,0 +1,72 @@
+name: Build Unsigned IPA
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Sweetkey IPA
+    runs-on: macos-14
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: |
+          sudo xcode-select -s /Applications/Xcode_15.4.app/Contents/Developer || \
+          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+          xcodebuild -version
+
+      - name: Install XcodeGen
+        run: |
+          brew install xcodegen
+          xcodegen --version
+
+      - name: Generate Xcode Project
+        run: |
+          xcodegen generate --spec project.yml
+
+      - name: Build Unsigned Archive
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project Sweetkey.xcodeproj \
+            -scheme Sweetkey \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/Sweetkey.xcarchive" \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            DEVELOPMENT_TEAM="" \
+            clean archive
+
+      - name: Package IPA
+        run: |
+          set -euo pipefail
+          APP_PATH="$RUNNER_TEMP/Sweetkey.xcarchive/Products/Applications/Sweetkey.app"
+          if [ ! -d "$APP_PATH" ]; then
+            echo "❌ Sweetkey.app not found"
+            exit 1
+          fi
+          if [ ! -d "$APP_PATH/PlugIns/CustomKeyboardExt.appex" ]; then
+            echo "❌ CustomKeyboardExt.appex not embedded"
+            exit 1
+          fi
+          mkdir -p "$RUNNER_TEMP/Payload"
+          cp -R "$APP_PATH" "$RUNNER_TEMP/Payload/"
+          cd "$RUNNER_TEMP"
+          zip -r -y Sweetkey.ipa Payload
+          ls -lh Sweetkey.ipa
+
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Sweetkey-Unsigned-IPA
+          path: ${{ runner.temp }}/Sweetkey.ipa
+          retention-days: 30
