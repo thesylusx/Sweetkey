@@ -93,12 +93,17 @@ final class EmojiPanel: UIView {
     private func buildCategoryTabs() {
         categoryStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
         for (index, cat) in categories.enumerated() {
-            let btn = UIButton(type: .system)
+                        let btn = UIButton(type: .system)
             let config = UIImage.SymbolConfiguration(pointSize: 14, weight: .medium)
             btn.setImage(UIImage(systemName: cat.icon, withConfiguration: config), for: .normal)
             btn.setTitle(" \(cat.id)", for: .normal)
             btn.titleLabel?.font = .systemFont(ofSize: 11, weight: .medium)
-            btn.contentEdgeInsets = UIEdgeInsets(top: 4, left: 10, bottom: 4, right: 10)
+            
+            // ওয়ার্নিং ফিক্স
+            var btnConfig = UIButton.Configuration.plain()
+            btnConfig.contentInsets = NSDirectionalEdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)
+            btn.configuration = btnConfig
+            
             btn.layer.cornerRadius = 8
             btn.tag = index
             btn.addTarget(self, action: #selector(categoryTapped(_:)), for: .touchUpInside)
