@@ -9,6 +9,7 @@ final class KeyboardViewController: UIInputViewController {
     private var isBanglaMode = true
     private var isNumberMode = false
     private var isEmojiMode = false
+    private var isBanglaScriptMode = false // নতুন: বাংলা স্ক্রিপ্ট লেআউট
     private var currentBuffer = ""
     private var shiftEnabled = false
     private var theme: KeyboardTheme = ThemeManager.shared.currentTheme
@@ -113,15 +114,23 @@ final class KeyboardViewController: UIInputViewController {
 
     private func rebuildKeys() {
         keyStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
-        if isNumberMode { buildNumberPad() } else { buildQWERTY() }
+        
+        if isNumberMode {
+            buildNumberPad()
+        } else if isBanglaScriptMode {
+            buildBanglaScriptLayout()
+        } else {
+            buildQWERTY()
+        }
     }
 
+    // MARK: - 1. English QWERTY Layout
     private func buildQWERTY() {
         var rows: [[String]] = [
             ["q","w","e","r","t","y","u","i","o","p"],
             ["a","s","d","f","g","h","j","k","l"],
             ["⇧","z","x","c","v","b","n","m","⌫"],
-            ["123","😀","space","return"]
+            ["123","😀","অআকখ","space","return"] // এখানে "অআকখ" বাটন যোগ করা হয়েছে
         ]
         if context == .email { rows.insert(["@", ".", ".com", "_", "-"], at: 0) }
         else if context == .url { rows.insert(["/", ".", ":", "_", "-"], at: 0) }
@@ -142,6 +151,51 @@ final class KeyboardViewController: UIInputViewController {
         }
     }
 
+    // MARK: - 2. Bangla Script Layout
+    private func buildBanglaScriptLayout() {
+        for row in BanglaScriptLayout.rows {
+            let rowStack = UIStackView()
+            rowStack.axis = .horizontal
+            rowStack.spacing = 4
+            rowStack.distribution = .fillProportionally
+            
+            for key in row {
+                let button = makeKeyButton(title: key)
+                button.titleLabel?.font = .systemFont(ofSize: 20, weight: .medium)
+                
+                // কার-চিহ্ন বা হসন্ত হলে আলাদা কালার
+                if ["া","ি","ী","ু","ূ","ৃ","ে","ৈ","ো","ৌ","ং","ঃ","ঁ","্"].contains(key) {
+                    button.backgroundColor = theme.specialKeyBackground
+                    button.setTitleColor(theme.specialKeyText, for: .normal)
+                }
+                rowStack.addArrangedSubview(button)
+            }
+            keyStack.addArrangedSubview(rowStack)
+        }
+        
+        // নিচের সারি (Space, Backspace, ABC, 123)
+        let bottomStack = UIStackView()
+        bottomStack.axis = .horizontal
+        bottomStack.spacing = 6
+        bottomStack.distribution = .fillProportionally
+        
+        let abcBtn = makeKeyButton(title: "ABC") // ইংরেজি লেআউটে ফেরার বাটন
+        let numBtn = makeKeyButton(title: "123")
+        let spaceBtn = makeKeyButton(title: "space")
+        let delBtn = makeKeyButton(title: "⌫")
+        
+        bottomStack.addArrangedSubview(abcBtn)
+        bottomStack.addArrangedSubview(numBtn)
+        bottomStack.addArrangedSubview(spaceBtn)
+        bottomStack.addArrangedSubview(delBtn)
+        keyStack.addArrangedSubview(bottomStack)
+        
+        // স্পেসবারে কার্সর মুভ করার সুবিধা
+        let pan = UIPanGestureRecognizer(target: self, action: #selector(handleSpacePan(_:)))
+        spaceBtn.addGestureRecognizer(pan)
+    }
+
+    // MARK: - 3. Number Pad Layout
     private func buildNumberPad() {
         let rows: [[String]] = [["1","2","3"],["4","5","6"],["7","8","9"],["ABC","0","⌫"]]
         for row in rows {
@@ -158,6 +212,7 @@ final class KeyboardViewController: UIInputViewController {
         }
     }
 
+    // MARK: - Universal Key Button Builder
     private func makeKeyButton(title: String) -> UIButton {
         let button = UIButton(type: .system)
         button.setTitle(title, for: .normal)
@@ -168,7 +223,7 @@ final class KeyboardViewController: UIInputViewController {
         button.layer.masksToBounds = true
         button.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
 
-        let specialKeys: Set<String> = ["⌫","⇧","return","123","ABC","😀","space"]
+        let specialKeys: Set<String> = ["⌫","⇧","return","123","ABC","😀","space","অআকখ","🌐"]
         if specialKeys.contains(title) {
             button.backgroundColor = theme.specialKeyBackground
             button.setTitleColor(theme.specialKeyText, for: .normal)
@@ -176,7 +231,7 @@ final class KeyboardViewController: UIInputViewController {
                 button.setTitleColor(theme.keyText, for: .normal)
                 button.backgroundColor = theme.keyBackground
             }
-        } else if title.count > 1 && title != "space" {
+        } else if title.count > 1 && title != "space" && title != "অআকখ" {
             button.titleLabel?.font = .systemFont(ofSize: 14, weight: .medium)
             button.backgroundColor = theme.specialKeyBackground
             button.setTitleColor(theme.specialKeyText, for: .normal)
@@ -203,6 +258,7 @@ final class KeyboardViewController: UIInputViewController {
         }
     }
 
+    // MARK: - Key Processing
     @objc private func keyTapped(_ sender: UIButton) {
         guard let key = sender.titleLabel?.text else { return }
         if isEmojiMode { exitEmojiMode() }
@@ -213,13 +269,24 @@ final class KeyboardViewController: UIInputViewController {
         case "return": commitBuffer(); textDocumentProxy.insertText("\n")
         case "⇧": shiftEnabled.toggle()
         case "123": isNumberMode = true; rebuildKeys()
-        case "ABC": isNumberMode = false; rebuildKeys()
         case "😀": enterEmojiMode()
         case "🌐": isBanglaMode.toggle(); updateSuggestions(); rebuildKeys()
+        
+        // লেআউট সুইচিং
+        case "অআকখ": 
+            isBanglaScriptMode = true
+            rebuildKeys()
+        case "ABC": 
+            isBanglaScriptMode = false
+            isNumberMode = false
+            rebuildKeys()
+            
         case "@", ".", ".com", "/", ":", "_", "-": textDocumentProxy.insertText(key)
         default:
             if isNumberMode { textDocumentProxy.insertText(key) }
-            else { handleCharacterInput(key) }
+            else if isBanglaScriptMode { 
+                textDocumentProxy.insertText(key) 
+            } else { handleCharacterInput(key) }
         }
     }
 
@@ -288,6 +355,7 @@ final class KeyboardViewController: UIInputViewController {
     }
 }
 
+// MARK: - Delegates
 extension KeyboardViewController: KeyboardToolbarDelegate {
     func toolbarDidTapLanguage() { isBanglaMode.toggle(); updateSuggestions(); rebuildKeys() }
     func toolbarDidTapNumberToggle() {
