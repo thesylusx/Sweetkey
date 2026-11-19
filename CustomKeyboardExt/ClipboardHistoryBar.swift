@@ -50,14 +50,19 @@ final class ClipboardHistoryBar: UIView {
         ])
     }
 
-    func reload(with items: [String]) {
+     func reload(with items: [String]) {
         stack.arrangedSubviews.forEach { $0.removeFromSuperview() }
         for item in items {
             let button = UIButton(type: .system)
             let preview = item.count > 20 ? String(item.prefix(20)) + "…" : item
             button.setTitle(preview, for: .normal)
             button.titleLabel?.font = .systemFont(ofSize: 14)
-            button.contentEdgeInsets = UIEdgeInsets(top: 4, left: 10, bottom: 4, right: 10)
+            
+            // ওয়ার্নিং ফিক্স
+            var config = UIButton.Configuration.plain()
+            config.contentInsets = NSDirectionalEdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)
+            button.configuration = config
+            
             button.backgroundColor = .secondarySystemBackground
             button.layer.cornerRadius = 6
             button.addTarget(self, action: #selector(itemTapped(_:)), for: .touchUpInside)
