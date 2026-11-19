@@ -2,7 +2,7 @@ import Foundation
 
 final class AIService {
     // ⚠️ এখানে Gemini API Key বসান: https://aistudio.google.com/apikey
-    private let apiKey = "YOUR_GEMINI_API_KEY_HERE"
+    private let apiKey = "AQ.Ab8RN6KBd76tSCSX3CQ4bI7NpACP62PI6VhPkQ9XM3wbPAWyFw"
     private let baseURL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
 
     enum AIError: LocalizedError {
@@ -21,7 +21,7 @@ final class AIService {
     }
 
     func rewrite(text: String, completion: @escaping (Result<String, Error>) -> Void) {
-        guard !apiKey.isEmpty, apiKey != "YOUR_GEMINI_API_KEY_HERE" else {
+        guard !apiKey.isEmpty, apiKey != "AQ.Ab8RN6KBd76tSCSX3CQ4bI7NpACP62PI6VhPkQ9XM3wbPAWyFw" else {
             completion(.failure(AIError.missingAPIKey)); return
         }
         guard let url = URL(string: "\(baseURL)?key=\(apiKey)") else {
