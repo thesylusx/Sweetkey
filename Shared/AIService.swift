@@ -2,7 +2,7 @@ import Foundation
 
 final class AIService {
     // ⚠️ এখানে Gemini API Key বসান: https://aistudio.google.com/apikey
-    private let apiKey = "AQ.Ab8RN6KBd76tSCSX3CQ4bI7NpACP62PI6VhPkQ9XM3wbPAWyFw"
+    private let apiKey = "YOUR_GEMINI_API_KEY_HERE"
     private let baseURL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
 
     enum AIError: LocalizedError {
@@ -48,4 +48,20 @@ final class AIService {
             guard let httpResponse = response as? HTTPURLResponse else {
                 completion(.failure(AIError.networkError("Invalid response"))); return
             }
-            guard (
+            guard (200...299).contains(httpResponse.statusCode) else {
+                let msg = data.flatMap { String(data: $0, encoding: .utf8) } ?? "Unknown"
+                completion(.failure(AIError.serverError(httpResponse.statusCode, msg))); return
+            }
+            guard let data else { completion(.failure(AIError.emptyResponse)); return }
+            do {
+                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let candidates = json["candidates"] as? [[String: Any]],
+                   let content = candidates.first?["content"] as? [String: Any],
+                   let parts = content["parts"] as? [[String: Any]],
+                   let textPart = parts.first?["text"] as? String {
+                    completion(.success(textPart.trimmingCharacters(in: .whitespacesAndNewlines)))
+                } else { completion(.failure(AIError.decodingError)) }
+            } catch { completion(.failure(AIError.decodingError)) }
+        }.resume()
+    }
+}
