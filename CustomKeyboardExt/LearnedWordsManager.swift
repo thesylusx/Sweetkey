@@ -38,7 +38,9 @@ final class LearnedWordsManager {
 
     private func trim(_ dict: inout [String: Int]) {
         let sorted = dict.sorted { $0.value > $1.value }
-        dict = Dictionary(uniqueKeysWithValues: sorted.prefix(maxWordsPerLanguage))
+        // টাইপ মিসম্যাচ ফিক্স করা হয়েছে এখানে
+        let topItems = sorted.prefix(maxWordsPerLanguage).map { ($0.key, $0.value) }
+        dict = Dictionary(uniqueKeysWithValues: topItems)
     }
 
     private func save() {
