@@ -93,4 +93,21 @@ final class BanglaPhoneticEngine {
                 if let output = multiCharMap[original.lowercased()] { return (original, output) }
             }
         }
-        return
+        return nil
+    }
+
+    private func postProcess(_ input: String) -> String {
+        var result = input
+        result = result.replacingOccurrences(of: "oi", with: "ৈ")
+        result = result.replacingOccurrences(of: "ou", with: "ৌ")
+        if let rephPattern = try? NSRegularExpression(pattern: "র([ক-হ])", options: []) {
+            let range = NSRange(result.startIndex..., in: result)
+            result = rephPattern.stringByReplacingMatches(in: result, options: [], range: range, withTemplate: "$1্র")
+        }
+        if let yaPattern = try? NSRegularExpression(pattern: "([ক-হ])য়", options: []) {
+            let range = NSRange(result.startIndex..., in: result)
+            result = yaPattern.stringByReplacingMatches(in: result, options: [], range: range, withTemplate: "$1্য")
+        }
+        return result
+    }
+}
